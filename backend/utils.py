@@ -4,7 +4,7 @@ import oss2
 from oss2.credentials import EnvironmentVariableCredentialsProvider
 import dashscope
 from dashscope.audio.asr import Transcription
-from dashscope.audio.tts_v2 import *
+from dashscope.audio.tts_v2 import SpeechSynthesizer
 from config import Config
 from http import HTTPStatus
 import json

@@ -11,4 +11,5 @@ numpy
 requests==2.26.0
 websockets==10.0
 ffmpeg-python==0.2.0
-wave==0.0.2 
+wave==0.0.2
+-U dashscope 

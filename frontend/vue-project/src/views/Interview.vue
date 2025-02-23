@@ -2,7 +2,7 @@
   <div class="interview-container">
     <div class="chat-layout">
       <div class="interviewer-section">
-        <img src="/images/interviewer.png" alt="AI面试官" class="interviewer-avatar" />
+        <DigitalHuman ref="digitalHuman" @session-ready="onDigitalHumanReady" @session-error="handleSessionError" />
       </div>
       <div class="chat-section">
         <div class="messages" ref="messagesContainer">
@@ -22,6 +22,7 @@
             @mousedown="startRecording" 
             @mouseup="stopRecording"
             @mouseleave="stopRecording"
+            :disabled="!isDigitalHumanReady"
           >
             <i class="el-icon-microphone"></i>
             {{ isRecording ? '松开结束录音' : '按住说话' }}
@@ -34,18 +35,32 @@
 
 <script>
 import axios from 'axios';
+import DigitalHuman from '../components/DigitalHuman.vue';
 
 export default {
   name: 'Interview',
+  components: {
+    DigitalHuman
+  },
   data() {
     return {
       messages: [],
       isRecording: false,
       mediaRecorder: null,
       audioChunks: [],
+      isDigitalHumanReady: false
     }
   },
   methods: {
+    onDigitalHumanReady() {
+      this.isDigitalHumanReady = true;
+      console.log('isDigitalHumanReady:', this.isDigitalHumanReady); // 添加调试信息
+      this.$message.success('数字人准备就绪');
+    },
+    handleSessionError(error) {
+      console.error('Digital human session error:', error);
+      this.$message.error('数字人初始化失败，请刷新页面重试');
+    },
     playAudio(event, index) {
       // 只有当这是最新的消息时才自动播放
       if (index === this.messages.length - 1) {
@@ -91,16 +106,27 @@ export default {
             }
           });
 
+          // 添加用户消息
           this.messages.push({
             type: 'user',
             text: response.data.user_text
           });
-
-          this.messages.push({
+  
+          // 添加AI消息
+          const aiMessage = {
             type: 'ai',
             text: response.data.ai_response,
             audioUrl: response.data.ai_audio_url
-          });
+          };
+          this.messages.push(aiMessage);
+
+          // 发送任务给数字人
+          try {
+            await this.$refs.digitalHuman.sendTask(response.data.ai_response);
+          } catch (error) {
+            console.error('Error sending task to digital human:', error);
+            this.$message.warning('数字人响应失败，但语音正常播放');
+          }
 
           this.$nextTick(() => {
             const container = this.$refs.messagesContainer;
@@ -142,7 +168,7 @@ export default {
 }
 
 .interviewer-section {
-  width: 380px;
+  width: 780px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -150,14 +176,7 @@ export default {
   padding: 0;
   background: rgba(0, 0, 0, 0.2);
   position: relative;
-}
-
-.interviewer-avatar {
-  width: 100%;
-  max-width: 380px;
-  border-radius: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  margin: 0;
+  overflow: hidden;
 }
 
 .chat-section {
@@ -249,36 +268,24 @@ export default {
   background: white;
   display: flex;
   justify-content: center;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .el-button {
-  width: 280px;
-  height: 60px;
-  font-size: 1.3em;
-  border-radius: 30px;
+  width: 200px;
+  height: 50px;
+  font-size: 1.1em;
+  border-radius: 25px;
   transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: linear-gradient(135deg, #8E44AD, #9B59B6);
-  border: none;
-  box-shadow: 0 4px 15px rgba(142, 68, 173, 0.3);
 }
 
-.el-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(142, 68, 173, 0.4);
+.el-button.recording {
+  background: #E74C3C;
+  border-color: #E74C3C;
+  animation: pulse 1.5s infinite;
 }
 
-.recording {
-  background: linear-gradient(135deg, #E74C3C, #C0392B) !important;
-  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3) !important;
-  animation: pulseRecord 1.5s infinite;
-}
-
-@keyframes pulseRecord {
+@keyframes pulse {
   0% {
     transform: scale(1);
   }
@@ -290,87 +297,33 @@ export default {
   }
 }
 
-/* Custom scrollbar */
-.messages::-webkit-scrollbar {
-  width: 8px;
+.el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.messages::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+.el-button:active {
+  transform: translateY(1px);
 }
 
-.messages::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+.el-button i {
+  margin-right: 8px;
+  font-size: 1.2em;
 }
 
-.messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Responsive design */
-@media (max-width: 1024px) {
+/* 响应式设计 */
+@media (max-width: 768px) {
   .chat-layout {
     flex-direction: column;
   }
 
   .interviewer-section {
     width: 100%;
-    height: auto;
-    padding: 0;
-    flex-direction: row;
-    justify-content: flex-start;
-    background: rgba(0, 0, 0, 0.3);
-  }
-
-  .interviewer-avatar {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    margin: 10px;
-    border-radius: 10px;
-  }
-
-  .chat-section {
-    height: calc(100% - 120px);
-  }
-}
-
-@media (max-width: 768px) {
-  .interview-container {
-    padding-top: 50px;
-  }
-
-  .interviewer-section {
-    padding: 0;
-    height: 80px;
-    background: rgba(0, 0, 0, 0.4);
-  }
-
-  .interviewer-avatar {
-    width: 60px;
-    height: 60px;
-    margin: 10px;
-  }
-
-  .chat-section {
-    height: calc(100% - 80px);
+    height: 300px;
   }
 
   .message-bubble {
     max-width: 85%;
-    padding: 15px 20px;
-  }
-
-  .controls {
-    padding: 10px;
-  }
-
-  .el-button {
-    width: 240px;
-    height: 50px;
-    font-size: 1.2em;
   }
 }
 </style> 
